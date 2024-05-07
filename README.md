@@ -1,10 +1,10 @@
 # gh alerts
 
-[GitHub CLI](https://github.com/cli/cli) extension for viewing security alerts. 
+[GitHub CLI](https://github.com/cli/cli) extension for viewing unresolved security alerts.
 
 ## Installation
 ```bash
-gh extension install securesauce/gh-alerts
+gh extension install pcrock-thmdo/gh-alerts
 ```
 
 ## Usage
