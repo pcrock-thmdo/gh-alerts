@@ -9,6 +9,7 @@ USAGE
   $ gh alerts [-h] [-o ORG_NAME] [PACKAGE_NAME]
 
 OPTIONS
+  -j, --json                    show raw json output
   -o ORG_NAME, --org ORG_NAME   show alerts for org
   -h, --help                    show this help message and exit
 
@@ -21,6 +22,10 @@ EXAMPLES
 EOF
 }
 
+unset OWNER
+unset JSON
+unset PACKAGE
+
 while [ "$1" != "" ]
 do
   case $1 in
@@ -29,6 +34,9 @@ do
       ;;
     -h | --help ) help
       exit 0
+      ;;
+    -j | --json )
+      JSON=1
       ;;
     * ) PACKAGE="$1"
       ;;
@@ -129,9 +137,23 @@ ORG_TEMPLATE="
   {{- end -}}
 "
 
+api_cmd=(
+  exec gh api graphql --paginate
+)
+
 if [ -n "$OWNER" ]
 then
-  exec gh api graphql --paginate -F owner="${OWNER}" -f query="${ORG_QUERY}" --template="${ORG_TEMPLATE}"
+  api_cmd+=(
+    -F owner="${OWNER}"
+    -f query="${ORG_QUERY}"
+  )
+  test -n "${JSON}" || api_cmd+=(--template="${ORG_TEMPLATE}")
 else
-  exec gh api graphql --paginate -F owner=":owner" -F repo=":repo" -f query="${QUERY}" --template="${TEMPLATE}"
+  api_cmd+=(
+    -F owner=":owner"
+    -f query="${QUERY}"
+  )
+  test -n "${JSON}" || api_cmd+=(--template="${TEMPLATE}")
 fi
+
+"${api_cmd[@]}"
