@@ -46,22 +46,31 @@ done
 
 # shellcheck disable=SC2016  # all $ in the following are not referring to bash variables
 QUERY='
-  query($owner: String!, $repo: String!, $endCursor: String) {
-    repository(owner: $owner, name: $repo) {
-      vulnerabilityAlerts(first: 100, after: $endCursor, states: [ OPEN ]) {
-        nodes {
-          createdAt
-          dismissReason
-          dismissedAt
-          dismisser { login, name }
-          securityAdvisory { summary, permalink }
-          securityVulnerability {
-            package { name }
-            severity
+  query($username: String!, $endCursor: String) {
+    user(login: $username) {
+      repositories(first: 100, affiliations: OWNER, ownerAffiliations: OWNER, after: $endCursor) {
+        edges {
+          node {
+            name
+            vulnerabilityAlerts(first: 100, states: [OPEN]) {
+              edges {
+                node {
+                  createdAt
+                  dismissReason
+                  dismissedAt
+                  dismisser { login, name }
+                  securityAdvisory { summary, permalink }
+                  securityVulnerability {
+                    package { name }
+                    severity
+                  }
+                  vulnerableManifestPath
+                  vulnerableRequirements
+                }
+              }
+            }
           }
-          vulnerableManifestPath
-          vulnerableRequirements
-        },
+        }
         pageInfo {
           hasNextPage
           endCursor
@@ -147,13 +156,23 @@ then
     -F owner="${OWNER}"
     -f query="${ORG_QUERY}"
   )
-  test -n "${JSON}" || api_cmd+=(--template="${ORG_TEMPLATE}")
+  if [ -n "${JSON}" ]; then
+    "${api_cmd[@]}" | jq -s 'map(.data.organization.repositories.nodes) | flatten | map(.vulnerabilityAlerts.nodes) | flatten'
+  else
+    api_cmd+=(--template="${ORG_TEMPLATE}")
+    "${api_cmd[@]}"
+  fi
+
 else
   api_cmd+=(
-    -F owner=":owner"
+    -F username=:owner
     -f query="${QUERY}"
   )
-  test -n "${JSON}" || api_cmd+=(--template="${TEMPLATE}")
-fi
+  if [ -n "${JSON}" ]; then
+    "${api_cmd[@]}" | jq -s 'map(.data.user.repositories.edges) | flatten | map(.node.vulnerabilityAlerts.edges) | flatten'
+  else
+    api_cmd+=(--template="${TEMPLATE}")
+    "${api_cmd[@]}"
+  fi
 
-"${api_cmd[@]}"
+fi
